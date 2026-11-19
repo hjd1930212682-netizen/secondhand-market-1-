@@ -46,6 +46,33 @@ def _ignore(directory: str, names: list[str]) -> set[str]:
     return ignored
 
 
+def _clean(path: Path) -> None:
+    """尽力清空目录内容。
+
+    沙箱或杀毒软件可能锁住个别文件，删除失败时忽略该文件，
+    后续复制用覆盖模式写入，避免整个打包流程中断。
+    """
+    if not path.exists():
+        return
+    for child in path.iterdir():
+        try:
+            if child.is_dir():
+                shutil.rmtree(child, ignore_errors=True)
+            else:
+                child.unlink()
+        except OSError:
+            continue
+
+
+def _copy(source: Path, target: Path) -> None:
+    """覆盖式复制单个文件；目标被占用时先尝试删除再复制。"""
+    if target.exists():
+        try:
+            target.unlink()
+        except OSError:
+            pass
+    shutil.copy2(source, target)
+
 def _run(command: list[str], output: Path, title: str) -> None:
     """执行命令并把 标准输出+错误 写入文件；失败时写入提示而不是中断打包。"""
     try:
@@ -191,10 +218,10 @@ def _write_shot_list(target: Path) -> None:
 
 def build(with_zip: bool = False) -> Path:
     """重建交付文件夹；with_zip 为真时额外生成压缩包，返回交付目录路径。"""
-    if DELIVER_ROOT.exists():
-        if DELIVER_ROOT.name != DELIVER_NAME:
-            raise RuntimeError(f"拒绝删除非交付目录：{DELIVER_ROOT}")
-        shutil.rmtree(DELIVER_ROOT)
+    if DELIVER_ROOT.exists() and DELIVER_ROOT.name != DELIVER_NAME:
+        raise RuntimeError(f"拒绝清理非交付目录：{DELIVER_ROOT}")
+    DELIVER_ROOT.mkdir(parents=True, exist_ok=True)
+    _clean(DELIVER_ROOT)
 
     for child in ("01_源代码", "02_数据库脚本", "03_实验报告", "04_过程材料", "05_截图素材"):
         (DELIVER_ROOT / child).mkdir(parents=True, exist_ok=True)
@@ -203,9 +230,10 @@ def build(with_zip: bool = False) -> Path:
         PROJECT_ROOT,
         DELIVER_ROOT / "01_源代码" / "secondhand-market",
         ignore=_ignore,
+        dirs_exist_ok=True,
     )
 
-    shutil.copy2(PROJECT_ROOT / "sql" / "init.sql", DELIVER_ROOT / "02_数据库脚本" / "init.sql")
+    _copy(PROJECT_ROOT / "sql" / "init.sql", DELIVER_ROOT / "02_数据库脚本" / "init.sql")
     (DELIVER_ROOT / "02_数据库脚本" / "数据库说明.md").write_text(
         "# 数据库说明\n\n"
         "- 数据库：MySQL 8.0，字符集 utf8mb4 / utf8mb4_unicode_ci，存储引擎 InnoDB\n"
@@ -220,7 +248,7 @@ def build(with_zip: bool = False) -> Path:
 
     report = PROJECT_ROOT / "docs" / "实验报告.docx"
     if report.exists():
-        shutil.copy2(report, DELIVER_ROOT / "03_实验报告" / "实验报告.docx")
+        _copy(report, DELIVER_ROOT / "03_实验报告" / "实验报告.docx")
     (DELIVER_ROOT / "03_实验报告" / "待办.txt").write_text(
         "提交前请确认：\n1. 报告 6 章齐全，封面信息已填写\n"
         "2. 文档中的接口数量、状态转移条数与最终代码一致\n"
