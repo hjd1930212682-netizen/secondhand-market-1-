@@ -23,7 +23,13 @@ uvicorn app.main:app --reload
 
 ### 启动 MySQL（绿色版 zip 解压的情况）
 
-若 MySQL 不是用安装包注册为 Windows 服务，每次开机需要先启动它。前台启动：
+若 MySQL 不是用安装包注册为 Windows 服务，每次开机需要先启动它。`scripts/` 下提供两个双击脚本：
+
+- `start-mysql.bat`：临时启动，开发期间保持弹出的窗口不关闭即可
+- `install-mysql-service.bat`：右键「以管理员身份运行」，注册为开机自启服务（只需一次）
+- `start_mysql.py`：命令行方式，检测端口并在未启动时自动拉起（供自动化任务调用）
+
+手动前台启动的命令：
 
 ```powershell
 C:\Users\13230\mysql8\mysql-8.0.46-winx64\bin\mysqld.exe --defaults-file=C:\Users\13230\mysql8\my.ini --console
