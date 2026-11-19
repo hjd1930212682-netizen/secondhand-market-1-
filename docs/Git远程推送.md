@@ -1,9 +1,13 @@
 # Git 远程推送配置（GitHub）
 
-当前状态：本地仓库 `main` 分支已有 D1 提交，但**尚未配置远程仓库**，也没有可用的 GitHub 凭据
-（`ssh -T git@github.com` 返回 `Permission denied (publickey)`）。
+当前状态（2026-11-20 已验证生效）：**远程仓库已绑定，推送成功。**
 
-配好下面任意一种方式后，每日自动任务会在提交完成后自动 `git push`。
+- remote：`git@github.com:hjd1930212682-netizen/secondhand-market-1-.git`
+- 分支：`main` 跟踪 `origin/main`
+- 首次推送：D1 的 7 次提交全部上传，本地与远程 HEAD 一致
+
+每日自动任务会在提交完成后自动 `git push origin main`。下面保留配置步骤与排障记录，
+供换电脑、换账号或凭据失效时参考。
 
 ## 方式一：SSH（推荐，一次配置长期可用）
 
