@@ -268,6 +268,14 @@ def build(with_zip: bool = False) -> Path:
         if source.exists():
             shutil.copy2(source, DELIVER_ROOT / "04_过程材料" / name)
 
+    # 设计文档引用的四张图随文档一起交付，否则 04_过程材料 里的图片链接会断
+    figures = PROJECT_ROOT / "docs" / "figures"
+    if figures.is_dir():
+        target = DELIVER_ROOT / "04_过程材料" / "figures"
+        target.mkdir(parents=True, exist_ok=True)
+        for png in sorted(figures.glob("*.png")):
+            shutil.copy2(png, target / png.name)
+
     _run(
         ["git", "log", "--graph", "--pretty=format:%ad | %an | %s", "--date=format:%Y-%m-%d %H:%M"],
         DELIVER_ROOT / "04_过程材料" / "Git提交记录.txt",
