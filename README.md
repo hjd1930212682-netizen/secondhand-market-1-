@@ -48,14 +48,21 @@ sc.exe start MySQL80
 
 ## 测试
 
-`pytest -q` 运行 TestClient 接口测试，本机在 MySQL 8.0.46 上 **67 项全部通过**。普通接口测试使用隔离数据库验证业务流程；`tests/test_mysql_concurrency.py` 需要可连接的 `TEST_DATABASE_URL`（库名必须为 `secondhand_market_test`），会清空并重建测试库七张表，再以五个并发请求验证同一商品只能被一人下单。实际结果：**1 单成功，4 单返回 409「商品已被抢购」**。
+`pytest -q` 运行 TestClient 接口测试，本机在 MySQL 8.0.46 上 **68 项全部通过、0 跳过**。普通接口测试使用隔离数据库验证业务流程；`tests/test_mysql_concurrency.py` 需要可连接的 `TEST_DATABASE_URL`（库名必须为 `secondhand_market_test`），会清空并重建测试库七张表，再以五个并发请求验证同一商品只能被一人下单。实际结果：**1 单成功，4 单返回 409「商品已被抢购」**。
+
+## 接口与鉴权
+
+- 共 24 条 `/api` 路径、30 个接口，按模块分 6 组，逐条参数与错误码见 `docs/接口文档.md`；服务启动后 `/docs` 可交互调试。
+- 受保护接口统一带 `Authorization: Bearer <token>`；令牌由 `POST /api/auth/login` 下发，`app/core/deps.py` 解析后注入当前用户。
+- 错误统一返回 `{"detail": "中文提示"}`：400 参数非法、401 未登录或令牌过期、403 越权、404 不存在、409 冲突。
+- 前端所有请求经 `frontend/js/api.js`，401 自动跳登录页，不散落在各页面。
 
 ## 目录与规则
 
 - `app/models/`：七张表；`app/services/`：业务规则；`app/routers/`：HTTP 参数和服务调用；`app/core/`：鉴权、异常和日志。
 - `frontend/pages/`：规格列出的 14 个页面；`frontend/js/api.js` 负责所有请求，`pages.js` 负责页面交互。
 - `sql/init.sql`：MySQL 8.0 建库和建表；`seed.py`：种子分类与可选演示账号。
-- `docs/`：接口、设计图、测试记录和报告草稿。
+- `docs/`：接口文档、四张设计图（`docs/figures/`）、测试记录和报告草稿。设计图由 `python scripts/make_figures.py` 生成，改代码后重跑即可同步。
 
 订单状态以 `app/services/order_state.py` 的转移表为唯一来源。所有前端订单按钮由接口的 `available_actions` 字段生成。商品删除是状态改为“已下架”，历史订单仍可引用商品。
 
