@@ -19,9 +19,9 @@
 | 11/19 晚 | D1 | 郝津德 | `.gitignore`、`requirements.txt`、`.env.example`、`pytest.ini`；`app/config.py`、`app/database.py`、`app/models/`、`sql/init.sql`；`seed.py`、`scripts/init_db.py` | `feat(数据库): 设计七张表 ORM 与 MySQL 建库脚本` |
 | 11/20 | 设计补强 | 安远 / 郝津德 | `app/services/order_state.py`（状态机修正）；`scripts/make_figures.py`、`docs/figures/`、`docs/系统设计.md`、`docs/接口文档.md`、`docs/实验报告草稿.md` | `docs(设计): 补齐四张设计图与设计文档` |
 | 11/21 | D2 | 郝津德 | `app/core/`（security/deps/exceptions/logger）、`app/main.py`、`app/routers/system.py`、`app/schemas/`、`README.md` | `feat(基建): 接入 JWT 鉴权与统一异常处理`（已于 11/20 晚提前完成） |
-| 11/22 | D3 | 王昱皓 | `frontend/js/api.js`、`frontend/js/common.js`、`frontend/css/style.css`、`app/routers/auth.py`、`app/routers/users.py`、`app/services/users.py`、`frontend/pages/{index,login,register,profile}.html` | `feat(用户): 完成注册登录与个人中心` |
-| 11/22 | D3 | 杨云凇 | `app/routers/goods.py`、`app/services/goods.py`、`app/models/goods.py`、`frontend/pages/{publish,goods-list}.html` | `feat(商品): 支持发布编辑与上下架` |
-| 11/23 | D4 | 杨云凇 | `frontend/pages/{goods-detail,my-goods}.html`、`frontend/js/pages.js`（商品段） | `feat(商品): 增加搜索分页与多图展示` |
+| 11/21 晚 | D3 | 王昱皓 | `frontend/js/{api,common,pages}.js`、`frontend/css/style.css`、`app/routers/{auth,users}.py`、`app/services/users.py`、`frontend/pages/{index,login,register,profile}.html` | `feat(用户): 完成注册登录与个人中心`（已于 11/21 晚提前完成） |
+| 11/21 晚 | D3 | 杨云凇 | `app/routers/goods.py`、`app/services/goods.py`、`frontend/pages/{publish,goods-list}.html` | `feat(商品): 支持发布编辑与上下架`（已于 11/21 晚提前完成） |
+| 11/23 | D4 | 杨云凇 | `frontend/pages/{goods-detail,my-goods}.html` | `feat(商品): 增加搜索分页与多图展示` |
 | 11/23 | D4 | 郝津德 | `app/services/order_state.py`、`app/services/orders.py`、`app/routers/orders.py`、`app/routers/upload.py`、`frontend/pages/my-orders.html` | `feat(订单): 实现状态机与防超卖下单事务` |
 | 11/24 | D5 | 郝津德 | `app/routers/{messages,favorites}.py`、`app/services/presenters.py`、`frontend/pages/{order-detail,messages,favorites}.html` | `feat(消息): 完成站内消息与收藏模块` |
 | 11/24 | D5 | 安远 | `app/routers/reviews.py`、`app/models/review.py`、`app/services/social.py`、`frontend/pages/review.html` | `feat(评价): 交易后互评与评分统计` |
