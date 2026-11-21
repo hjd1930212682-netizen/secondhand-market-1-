@@ -18,7 +18,9 @@
 
 from __future__ import annotations
 
+import os
 import shutil
+import stat
 import subprocess
 import sys
 from datetime import datetime
@@ -46,6 +48,19 @@ def _ignore(directory: str, names: list[str]) -> set[str]:
     return ignored
 
 
+def _force_remove(func, path, _exc_info) -> None:
+    """删除失败时去掉只读属性再试一次。
+
+    Git 把松散对象设为只读，Windows 上 rmtree 会直接跳过，
+    残留文件挡住 copytree 的覆盖写入，故在此强制改回可写。
+    """
+    try:
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+    except OSError:
+        pass
+
+
 def _clean(path: Path) -> None:
     """尽力清空目录内容。
 
@@ -57,8 +72,9 @@ def _clean(path: Path) -> None:
     for child in path.iterdir():
         try:
             if child.is_dir():
-                shutil.rmtree(child, ignore_errors=True)
+                shutil.rmtree(child, onerror=_force_remove)
             else:
+                os.chmod(child, stat.S_IWRITE)
                 child.unlink()
         except OSError:
             continue
