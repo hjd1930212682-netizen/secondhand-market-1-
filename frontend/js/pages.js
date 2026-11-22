@@ -57,11 +57,14 @@ async function goodsDetailPage() {
   initCommon("goods-list");
   const id=Number(q.get("id")); if(!id) return fail("缺少商品编号");
   const g=await api.get("/goods/"+id), me=currentUser();
+  // images 存的是逗号串，空项必须过滤：商品下架再上架会残留空串，不过滤就多出一格碎图。
   const photos=(g.images||"").split(",").filter(Boolean);
-  APP.innerHTML=`<div class="detail-layout"><div class="panel"><img id="main-photo" class="detail-photo" src="${img(g.images)}" alt="${e(g.title)}"><div id="thumbs" class="d-flex gap-2 mt-2">${photos.map(src=>`<img class="thumb-item" src="${e(src)}" alt="商品图片">`).join("")}</div></div>
+  const HOLDER="data:image/svg+xml;charset=utf-8,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><rect width="600" height="600" fill="#f0f1f2"/><text x="300" y="310" font-size="26" fill="#b4b2a9" text-anchor="middle">暂无图片</text></svg>');
+  APP.innerHTML=`<div class="detail-layout"><div class="panel"><img id="main-photo" class="detail-photo" src="${photos[0]||HOLDER}" alt="${e(g.title)}">${photos.length>1?`<div class="d-flex align-items-center gap-2 mt-2"><div id="thumbs" class="d-flex gap-2 flex-grow-1 overflow-auto">${photos.map((src,i)=>`<img class="thumb-item border border-2 ${i===0?"border-primary":"border-transparent"}" src="${e(src)}" alt="商品图片 ${i+1}">`).join("")}</div><span id="photo-index" class="small text-muted">1 / ${photos.length}</span></div>`:""}</div>
     <div class="panel"><h1 class="page-title">${e(g.title)}</h1><div class="price price-large">${formatPrice(g.price)}</div><p class="text-muted">${e(g.category_name)} · ${g.view_count} 次浏览 · ${e(g.status)}</p><p class="description">${e(g.description)}</p><p>卖家：${e(g.seller_name)} · 信用分 ${g.seller_credit}</p><div class="d-flex flex-wrap gap-2"><button id="fav" class="btn-ghost">收藏</button><button id="chat" class="btn-ghost">联系卖家</button><button id="buy" class="btn-brand" ${g.status!=="在售"||me?.id===g.seller_id?"disabled":""}>${g.status!=="在售"?"暂不可购买":"立即购买"}</button></div></div></div>
     <section class="panel mt-4"><h2 class="page-title">商品评价</h2><div id="reviews"></div></section>`;
-  document.querySelectorAll(".thumb-item").forEach(el=>el.onclick=()=>document.getElementById("main-photo").src=el.src);
+  // 点缩略图换主图并更新「第几张 / 共几张」，选中态借 Bootstrap 边框工具类，不新增 CSS。
+  document.querySelectorAll(".thumb-item").forEach((el,i)=>el.onclick=()=>{document.getElementById("main-photo").src=photos[i];document.getElementById("photo-index").textContent=(i+1)+" / "+photos.length;document.querySelectorAll(".thumb-item").forEach((t,j)=>{t.classList.toggle("border-primary",i===j);t.classList.toggle("border-transparent",i!==j);});});
   document.getElementById("fav").onclick=async()=>{if(!requireLogin())return;await api.post("/favorites",{goods_id:id});toast("收藏成功","success");};
   document.getElementById("chat").onclick=()=>{if(requireLogin())goto(`messages.html?to=${g.seller_id}&goods_id=${id}`);};
   document.getElementById("buy").onclick=async()=>{if(!requireLogin())return;const o=await api.post("/orders",{goods_id:id});goto("order-detail.html?id="+o.id);};
@@ -102,11 +105,20 @@ async function profilePage() {
 
 async function myGoodsPage() {
   if(!requireLogin())return;initCommon("");
-  html("我的商品",'<div id="items"></div>');
-  async function load(){const rows=(await api.get("/users/me/goods?size=100")).items;
-    document.getElementById("items").innerHTML=rows.length?rows.map(g=>`<div class="panel list-row"><img src="${img(g.images)}" alt=""><div class="flex-grow-1"><b>${e(g.title)}</b><p class="small text-muted mb-0">${e(g.status)} · ${formatPrice(g.price)}</p></div><a href="publish.html?id=${g.id}">编辑</a><button class="btn-ghost toggle" data-id="${g.id}" data-status="${g.status==='在售'?'已下架':'在售'}" ${g.status==='已售'?'disabled':''}>${g.status==='在售'?'下架':'上架'}</button><button class="btn-ghost remove" data-id="${g.id}" ${g.status==='已售'?'disabled':''}>删除</button></div>`).join(""):'<div class="empty">还没有发布商品</div>';
+  // 原来固定 size=100 一次拉完，商品超过 100 件会被静默截断；改成真分页，页码写进地址栏便于分享与刷新。
+  const state={page:Number(q.get("page"))||1,size:8};
+  html("我的商品",`<div class="d-flex justify-content-between align-items-center mb-3"><span id="count" class="small text-muted"></span><a class="btn-brand btn-sm" href="publish.html">发布新商品</a></div><div id="items"></div><div class="pager" id="pager"></div>`);
+  async function load(){
+    const data=await api.get(`/users/me/goods?page=${state.page}&size=${state.size}`);
+    const rows=data.items;
+    // 删掉当前页最后一件后页码会越界，回退一页再查，避免停在空白页。
+    if(!rows.length&&data.total>0&&state.page>1){state.page--;return load();}
+    history.replaceState(null,"","?page="+state.page);
+    document.getElementById("count").textContent=`共 ${data.total} 件`;
+    document.getElementById("items").innerHTML=rows.length?rows.map(g=>`<div class="panel list-row"><img src="${img(g.images)}" alt=""><div class="flex-grow-1"><b>${e(g.title)}</b><p class="small text-muted mb-0">${e(g.status)} · ${formatPrice(g.price)}</p></div><a href="publish.html?id=${g.id}">编辑</a><button class="btn-ghost toggle" data-id="${g.id}" data-status="${g.status==='在售'?'已下架':'在售'}" ${g.status==='已售'?'disabled':''}>${g.status==='在售'?'下架':'上架'}</button><button class="btn-ghost remove" data-id="${g.id}" ${g.status==='已售'?'disabled':''}>删除</button></div>`).join(""):'<div class="empty">还没有发布商品，<a href="publish.html">去发布一件</a></div>';
     document.querySelectorAll(".toggle").forEach(b=>b.onclick=async()=>{await api.put(`/goods/${b.dataset.id}/status`,{status:b.dataset.status});load();});
     document.querySelectorAll(".remove").forEach(b=>b.onclick=async()=>{if(confirm("确定下架这件商品？")){await api.del(`/goods/${b.dataset.id}`);load();}});
+    renderPager(document.getElementById("pager"),state.page,Math.max(1,Math.ceil(data.total/state.size)),p=>{state.page=p;load();});
   } await load();
 }
 
