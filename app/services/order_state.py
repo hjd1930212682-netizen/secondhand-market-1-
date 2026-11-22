@@ -20,6 +20,11 @@ TRANSITIONS = {
 }
 
 
+# 状态全集，顺序即正常生命周期；与 models/order.py 的 CheckConstraint 保持一致。
+# 列表接口用它拒掉拼错的状态值，否则筛错只会得到空列表，最难排查。
+ALL_STATUSES = ("PENDING", "PAID_PENDING", "COMPLETED", "CANCELLED")
+
+
 def available_actions(status: str, role: str) -> list[dict]:
     """接收当前状态和当事人角色，返回该角色此刻可点的按钮字段。"""
     return [{"label": rule["label"], "to_status": target, "style": rule["style"]}

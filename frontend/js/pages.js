@@ -124,13 +124,27 @@ async function myGoodsPage() {
 
 function actionButtons(order){return (order.available_actions||[]).map(a=>`<button class="btn-${a.style==='danger'?'ghost':'brand'} action" data-id="${order.id}" data-status="${e(a.to_status)}">${e(a.label)}</button>`).join("");}
 async function doAction(button, refresh){button.disabled=true;try{await api.put(`/orders/${button.dataset.id}/status`,{to_status:button.dataset.status});toast("操作成功","success");await refresh();}catch(err){button.disabled=false;}}
-async function myOrdersPage(){if(!requireLogin())return;initCommon("my-orders");const state={role:q.get("role")||"buyer",status:q.get("status")||""};
-  html("我的订单",`<div class="panel filter-panel"><select id="role" class="form-select"><option value="buyer">我买到的</option><option value="seller">我卖出的</option></select><select id="status" class="form-select"><option value="">全部状态</option><option value="PENDING">待确认</option><option value="PAID_PENDING">待付款</option><option value="COMPLETED">已完成</option><option value="CANCELLED">已取消</option></select></div><div id="items"></div>`);
+async function myOrdersPage(){if(!requireLogin())return;initCommon("my-orders");
+  // 原来固定 size=100 一次拉完，订单多了会被静默截断；改为分页，角色/状态/页码都写进地址栏，
+  // 刷新或从订单详情返回时仍停在原来的筛选结果上。
+  const state={role:q.get("role")||"buyer",status:q.get("status")||"",page:Number(q.get("page"))||1,size:6};
+  html("我的订单",`<div class="panel filter-panel"><select id="role" class="form-select"><option value="buyer">我买到的</option><option value="seller">我卖出的</option></select><select id="status" class="form-select"><option value="">全部状态</option><option value="PENDING">待确认</option><option value="PAID_PENDING">待付款</option><option value="COMPLETED">已完成</option><option value="CANCELLED">已取消</option></select><span id="count" class="small text-muted ms-auto"></span></div><div id="items"></div><div class="pager" id="pager"></div>`);
   document.getElementById("role").value=state.role;document.getElementById("status").value=state.status;
-  async function load(){history.replaceState(null,"","?role="+state.role+(state.status?"&status="+state.status:""));const rows=(await api.get(`/orders?role=${state.role}${state.status?'&status='+state.status:''}&size=100`)).items;
+  async function load(){
+    const query=new URLSearchParams({role:state.role,page:state.page,size:state.size});if(state.status)query.set("status",state.status);
+    const data=await api.get("/orders?"+query.toString()),rows=data.items;
+    // 翻到末页又撤掉一单时会越界，回退一页重查，避免停在空白页。
+    if(!rows.length&&data.total>0&&state.page>1){state.page--;return load();}
+    history.replaceState(null,"","?"+query.toString());
+    document.getElementById("count").textContent=`共 ${data.total} 单`;
     document.getElementById("items").innerHTML=rows.length?rows.map(o=>`<div class="order-card"><div class="order-head"><span>订单号 ${e(o.order_no)}</span>${statusTag(o.status)}</div><div class="order-body"><img src="${img(o.goods_images)}" alt=""><div class="order-info"><h4>${e(o.goods_title)}</h4><span>${state.role==='buyer'?'卖家：'+e(o.seller_name):'买家：'+e(o.buyer_name)}</span></div><div><b class="price">${formatPrice(o.price)}</b><br><a href="order-detail.html?id=${o.id}">查看详情</a></div></div><div class="order-actions">${actionButtons(o)}${o.status==='COMPLETED'&&state.role==='buyer'&&!o.reviewed?`<a class="btn-ghost" href="review.html?id=${o.id}">评价卖家</a>`:''}</div></div>`).join(""):'<div class="empty">暂无订单</div>';
-    document.querySelectorAll(".action").forEach(b=>b.onclick=()=>doAction(b,load));}
-  document.getElementById("role").onchange=ev=>{state.role=ev.target.value;load();};document.getElementById("status").onchange=ev=>{state.status=ev.target.value;load();};await load();}
+    document.querySelectorAll(".action").forEach(b=>b.onclick=()=>doAction(b,load));
+    renderPager(document.getElementById("pager"),state.page,Math.max(1,Math.ceil(data.total/state.size)),p=>{state.page=p;load();});
+  }
+  // 换筛选条件必须回到第 1 页，否则会落在新结果的空页上。
+  document.getElementById("role").onchange=ev=>{state.role=ev.target.value;state.page=1;load();};
+  document.getElementById("status").onchange=ev=>{state.status=ev.target.value;state.page=1;load();};
+  await load();}
 
 async function orderDetailPage(){if(!requireLogin())return;initCommon("my-orders");const id=Number(q.get("id"));if(!id)return fail("缺少订单编号");
   async function load(){const o=await api.get("/orders/"+id);html("订单详情",`<div class="panel"><p>订单号：${e(o.order_no)}</p><p>商品：<a href="goods-detail.html?id=${o.goods_id}">${e(o.goods_title)}</a></p><p>金额：<b class="price">${formatPrice(o.price)}</b></p><p>状态：${statusTag(o.status)}</p><p>买家：${e(o.buyer_name)} · 卖家：${e(o.seller_name)}</p><p>创建时间：${e(o.created_at)}</p><div class="d-flex gap-2">${actionButtons(o)}${o.status==='COMPLETED'&&currentUser()?.id===o.buyer_id&&!o.reviewed?`<a class="btn-brand" href="review.html?id=${o.id}">评价卖家</a>`:''}</div></div>`);document.querySelectorAll(".action").forEach(b=>b.onclick=()=>doAction(b,load));}await load();}
