@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!-- Author: 王昱皓 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>页面不存在 - 闲置集市</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body data-page="404">
+<main class="page" id="app">
+  <!-- 内容直接写死在 HTML 里，不靠 JS 渲染：
+       CDN 或脚本加载失败时，用户看到的仍是人话与返回入口，
+       而不是浏览器默认的空白 404 页。 -->
+  <section class="state-block">
+    <p class="state-code">404</p>
+    <h1 class="state-title">这个页面好像已经被卖掉了</h1>
+    <p class="state-text">链接可能已经过期，或者商品已被下架。换个关键词再找找？</p>
+    <!-- 原生 GET 提交即可跳转列表页，不依赖 JS；pages.js 只补一个回车后的去空格 -->
+    <form class="state-search" id="nf-search" role="search" action="goods-list.html" method="get">
+      <input class="form-control" id="nf-keyword" name="keyword" type="search" placeholder="搜索你想要的闲置好物" aria-label="搜索商品">
+      <button class="btn-brand" type="submit">搜索</button>
+    </form>
+    <div class="state-actions">
+      <a class="btn-brand" href="index.html">回首页</a>
+      <a class="btn-ghost" href="goods-list.html">随便逛逛</a>
+      <button class="btn-ghost" type="button" id="nf-back">返回上一页</button>
+    </div>
+  </section>
+</main>
+<script src="../js/api.js"></script>
+<script src="../js/common.js"></script>
+<script src="../js/pages.js"></script>
+</body>
+</html>

@@ -2,8 +2,9 @@
  * 公共组件
  * Author: 王昱皓
  *
- * 提供：导航栏渲染、登录校验、toast 提示、价格格式化、状态标签、分页组件。
+ * 提供：导航栏与页脚渲染、登录校验、toast 提示、价格格式化、状态标签、分页组件。
  * 每个页面引入后在 body 末尾调用 initCommon("当前页标识")。
+ * 14 个页面共用同一份导航与页脚，改一处即全站生效，不要在页面里另写一份。
  */
 
 /* ---------------- Toast ---------------- */
@@ -41,10 +42,15 @@ const NAV_ITEMS = [
 
 /** 渲染顶部导航，activeKey 用于高亮当前页 */
 function renderHeader(activeKey) {
+  // 重复初始化时不再插第二份导航（页面里重跑 initCommon 不会出现双导航）
+  if (document.querySelector(".site-header")) return;
+
   const user = currentUser();
   const links = NAV_ITEMS.map(
     (it) =>
-      `<a href="${it.href}" class="${it.key === activeKey ? "active" : ""}">${it.label}</a>`
+      `<a href="${it.href}" class="${it.key === activeKey ? "active" : ""}"${
+        it.key === activeKey ? ' aria-current="page"' : ""
+      }>${it.label}</a>`
   ).join("");
 
   const right = user
@@ -79,6 +85,34 @@ function renderHeader(activeKey) {
       }
     });
   }
+}
+
+/* ---------------- 页脚 ---------------- */
+
+/**
+ * 渲染页脚。页脚原本每个页面都没有，收口时统一由这里注入，
+ * 好处是 14 个页面保持同一份信息，改课程信息只改一处。
+ */
+function renderFooter() {
+  if (document.querySelector(".site-footer")) return;
+
+  const footer = document.createElement("footer");
+  footer.className = "site-footer";
+  footer.innerHTML = `
+    <div class="inner">
+      <div>
+        <div class="logo">闲置<span>集市</span></div>
+        <p class="footer-note">校内二手交易平台 · 当面自提 · 无手续费</p>
+      </div>
+      <nav class="footer-links">
+        <a href="goods-list.html">逛一逛</a>
+        <a href="publish.html">发布闲置</a>
+        <a href="my-orders.html">我的订单</a>
+        <a href="favorites.html">我的收藏</a>
+      </nav>
+      <p class="footer-meta">《操作系统与工具链》课程项目<br>FastAPI + MySQL 8.0 + 原生 JS</p>
+    </div>`;
+  document.body.appendChild(footer);
 }
 
 /* ---------------- 登录校验 ---------------- */
@@ -154,9 +188,10 @@ function renderPager(container, page, totalPages, onChange) {
   });
 }
 
-/** 页面初始化：注入导航、兜底图片、统一错误 */
+/** 页面初始化：注入导航与页脚、兜底图片、统一错误 */
 function initCommon(activeKey) {
   renderHeader(activeKey);
+  renderFooter();
 
   // 图片加载失败时显示占位色块
   document.addEventListener(

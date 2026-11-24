@@ -15,7 +15,14 @@ function renderGoods(items) {
     <span class="goods-seller">${e(g.seller_name || "")}</span></div></div></a>`).join("")}</div>`;
 }
 
-function fail(message) { APP.innerHTML = `<div class="empty">${e(message)}</div>`; }
+// 统一错误块。原来只往 #app 塞一行灰字，出错后用户没有退路；
+// 现在给出「返回上一页 / 回首页」，且与 404 页共用同一套 state-block 样式。
+function fail(message) {
+  APP.innerHTML = `<section class="state-block"><p class="state-title">${e(message || "页面加载失败")}</p><p class="state-text">可以返回上一页，或回首页重新开始。</p><div class="state-actions"><button class="btn-ghost" type="button" id="state-back">返回上一页</button><a class="btn-brand" href="index.html">回首页</a></div></section>`;
+  document.getElementById("state-back").onclick = goBack;
+}
+// history 里没有上一页（直接粘链接打开）时，back() 会把人留在原地，退回首页更稳妥
+function goBack() { if (history.length > 1) history.back(); else goto("index.html"); }
 function value(id) { return document.getElementById(id).value.trim(); }
 function html(title, body) { APP.innerHTML = `<h1 class="page-title">${e(title)}</h1>${body}`; }
 function goto(path) { location.href = path; }
@@ -115,7 +122,7 @@ async function myGoodsPage() {
     if(!rows.length&&data.total>0&&state.page>1){state.page--;return load();}
     history.replaceState(null,"","?page="+state.page);
     document.getElementById("count").textContent=`共 ${data.total} 件`;
-    document.getElementById("items").innerHTML=rows.length?rows.map(g=>`<div class="panel list-row"><img src="${img(g.images)}" alt=""><div class="flex-grow-1"><b>${e(g.title)}</b><p class="small text-muted mb-0">${e(g.status)} · ${formatPrice(g.price)}</p></div><a href="publish.html?id=${g.id}">编辑</a><button class="btn-ghost toggle" data-id="${g.id}" data-status="${g.status==='在售'?'已下架':'在售'}" ${g.status==='已售'?'disabled':''}>${g.status==='在售'?'下架':'上架'}</button><button class="btn-ghost remove" data-id="${g.id}" ${g.status==='已售'?'disabled':''}>删除</button></div>`).join(""):'<div class="empty">还没有发布商品，<a href="publish.html">去发布一件</a></div>';
+    document.getElementById("items").innerHTML=rows.length?rows.map(g=>`<div class="panel list-row"><img src="${img(g.images)}" alt=""><div class="flex-grow-1"><b>${e(g.title)}</b><p class="small text-muted mb-0">${e(g.status)} · ${formatPrice(g.price)}</p></div><div class="list-actions"><a href="publish.html?id=${g.id}">编辑</a><button class="btn-ghost toggle" data-id="${g.id}" data-status="${g.status==='在售'?'已下架':'在售'}" ${g.status==='已售'?'disabled':''}>${g.status==='在售'?'下架':'上架'}</button><button class="btn-ghost remove" data-id="${g.id}" ${g.status==='已售'?'disabled':''}>删除</button></div></div>`).join(""):'<div class="empty">还没有发布商品，<a href="publish.html">去发布一件</a></div>';
     document.querySelectorAll(".toggle").forEach(b=>b.onclick=async()=>{await api.put(`/goods/${b.dataset.id}/status`,{status:b.dataset.status});load();});
     document.querySelectorAll(".remove").forEach(b=>b.onclick=async()=>{if(confirm("确定下架这件商品？")){await api.del(`/goods/${b.dataset.id}`);load();}});
     renderPager(document.getElementById("pager"),state.page,Math.max(1,Math.ceil(data.total/state.size)),p=>{state.page=p;load();});
@@ -165,7 +172,7 @@ async function favoritesPage(){if(!requireLogin())return;initCommon("");
     // 在末页取消最后一条收藏会导致页码越界，回退一页重查，避免停在空白页。
     if(!rows.length&&data.total>0&&state.page>1){state.page--;return load();}
     history.replaceState(null,"","?page="+state.page);
-    document.getElementById("items").innerHTML=rows.length?rows.map(f=>`<div class="panel list-row"><img src="${img(f.goods.images)}" alt=""><div class="flex-grow-1"><a href="goods-detail.html?id=${f.goods.id}">${e(f.goods.title)}</a><p class="price mb-0">${formatPrice(f.goods.price)}</p></div><button class="btn-ghost remove" data-id="${f.goods.id}">取消收藏</button></div>`).join(""):'<div class="empty">还没有收藏</div>';
+    document.getElementById("items").innerHTML=rows.length?rows.map(f=>`<div class="panel list-row"><img src="${img(f.goods.images)}" alt=""><div class="flex-grow-1"><a href="goods-detail.html?id=${f.goods.id}">${e(f.goods.title)}</a><p class="price mb-0">${formatPrice(f.goods.price)}</p></div><div class="list-actions"><button class="btn-ghost remove" data-id="${f.goods.id}">取消收藏</button></div></div>`).join(""):'<div class="empty">还没有收藏</div>';
     document.querySelectorAll(".remove").forEach(b=>b.onclick=async()=>{await api.del("/favorites/"+b.dataset.id);toast("已取消收藏","success");load();});
     renderPager(document.getElementById("pager"),state.page,Math.max(1,Math.ceil(data.total/state.size)),p=>{state.page=p;load();});
   }
@@ -176,7 +183,7 @@ async function messagesPage(){if(!requireLogin())return;initCommon("messages");c
   // 但切换联系人时若把它丢掉，后面发出的消息就不再挂在任何商品上，所以拼 URL 时保留。
   let peer=Number(q.get("to"))||null;const goodsId=Number(q.get("goods_id"))||null;
   const peerUrl=id=>"?to="+id+(goodsId?"&goods_id="+goodsId:"");
-  html("消息中心",`<div class="message-layout"><div class="panel"><h2 class="page-title">联系人</h2><div id="peers"></div></div><div class="panel"><h2 class="page-title" id="peer-title">选择联系人</h2><div id="conversation"></div><form id="message-form" class="d-flex gap-2 mt-3"><input id="content" class="form-control" placeholder="输入消息" required><button class="btn-brand">发送</button></form></div></div>`);
+  html("消息中心",`<div class="message-layout"><div class="panel"><h2 class="page-title">联系人</h2><div id="peers" class="peer-list"></div></div><div class="panel"><h2 class="page-title" id="peer-title">选择联系人</h2><div id="conversation"></div><form id="message-form" class="d-flex gap-2 mt-3"><input id="content" class="form-control" placeholder="输入消息" required><button class="btn-brand">发送</button></form></div></div>`);
   // message 表没有「会话」实体，联系人只能从最近消息反推，课程规模下够用；
   // 反推窗口固定 100 条，超出的老联系人会漏，故下面按窗口大小给出提示，不假装完整。
   const recent=await api.get("/messages?size=100");
@@ -202,5 +209,19 @@ async function reviewPage(){if(!requireLogin())return;initCommon("my-orders");co
   if(o.reviewed)return fail("该订单已评价");
   html("评价交易",`<form class="panel form-card" id="form"><p>商品：${e(o.goods_title)}</p><p class="small text-muted">评价对象：卖家 ${e(o.seller_name)}</p><label>评分<select id="rating" class="form-select"><option value="5">5 星 · 非常满意</option><option value="4">4 星 · 满意</option><option value="3">3 星 · 一般</option><option value="2">2 星 · 不太满意</option><option value="1">1 星 · 不满意</option></select></label><label>评价内容<textarea id="content" class="form-control" rows="5" required maxlength="2000"></textarea></label><button class="btn-brand">提交评价</button></form>`);document.getElementById("form").onsubmit=async ev=>{ev.preventDefault();await api.post(`/orders/${id}/review`,{rating:Number(value("rating")),content:value("content")});toast("评价成功","success");goto("order-detail.html?id="+id);};}
 
-async function main(){try{switch(PAGE){case"index":return await indexPage();case"goods-list":return await goodsListPage();case"goods-detail":return await goodsDetailPage();case"login":return await authPage(false);case"register":return await authPage(true);case"publish":return await publishPage();case"profile":return await profilePage();case"my-goods":return await myGoodsPage();case"my-orders":return await myOrdersPage();case"order-detail":return await orderDetailPage();case"favorites":return await favoritesPage();case"messages":return await messagesPage();case"review":return await reviewPage();default:initCommon("");return html("页面不存在",'<div class="panel"><p>你访问的页面不存在。</p><a class="btn-brand" href="index.html">返回首页</a></div>');}}catch(err){fail(err.message||"页面加载失败");}}
+// 404 页的内容写死在 404.html 里，脚本挂了也看得见，这里只补导航与交互。
+async function notFoundPage() {
+  initCommon("");
+  document.getElementById("nf-back").onclick = goBack;
+  // 表单本身是 action="goods-list.html" 的原生 GET 提交，回车能直接走；
+  // 这里只做两件事：去掉首尾空格，以及空关键词留在本页（不跳去「共 0 件」的列表）。
+  document.getElementById("nf-search").onsubmit = (ev) => {
+    const input = document.getElementById("nf-keyword");
+    const word = input.value.trim();
+    if (!word) { ev.preventDefault(); input.focus(); return; }
+    input.value = word;
+  };
+}
+
+async function main(){try{switch(PAGE){case"index":return await indexPage();case"goods-list":return await goodsListPage();case"goods-detail":return await goodsDetailPage();case"login":return await authPage(false);case"register":return await authPage(true);case"publish":return await publishPage();case"profile":return await profilePage();case"my-goods":return await myGoodsPage();case"my-orders":return await myOrdersPage();case"order-detail":return await orderDetailPage();case"favorites":return await favoritesPage();case"messages":return await messagesPage();case"review":return await reviewPage();case"404":return await notFoundPage();default:initCommon("");return fail("页面不存在");}}catch(err){fail(err.message||"页面加载失败");}}
 main();
