@@ -25,7 +25,7 @@
 | 11/23 | D4 | 郝津德 | `app/services/{order_state,orders}.py`、`app/routers/orders.py`、`frontend/pages/my-orders.html` | `feat(订单): 实现状态机与防超卖下单事务`（已于 11/22 提前完成） |
 | 11/24 | D5 | 郝津德 | `app/routers/{messages,favorites}.py`、`app/services/social.py`、`app/services/presenters.py`、`frontend/pages/{order-detail,messages,favorites}.html` | `feat(消息): 完成站内消息与收藏模块`（已于 11/24 完成；`social.py` 头为 `# Author: 郝津德` 且含消息、收藏两段逻辑，故按作者行随其提交） |
 | 11/24 | D5 | 安远 | `app/routers/reviews.py`、`frontend/pages/review.html` | `feat(评价): 交易后互评与评分统计`（已于 11/24 完成；评价业务逻辑在 `social.py` 内，随郝津德一并入库） |
-| 11/25 | D6 | 王昱皓 | `frontend/pages/404.html`、`frontend/js/pages.js`（统一样式与错误提示） | `style(前端): 统一十三页样式与响应式断点` |
+| 11/25 | D6 | 王昱皓 | `frontend/pages/404.html`、`frontend/css/style.css`、`frontend/js/{common,pages}.js`（统一样式、页脚与错误提示） | `style(前端): 统一十四页样式与响应式断点`（已于 11/24 提前完成；`404.html` 原为郝津德占位桩，正式版由王昱皓改写，作者行随提交人） |
 | 11/26 | D7 | 全员 | 联调修复产生的改动，按修改人分别提交 | `fix(联调): 修正图片回显与状态按钮刷新` |
 | 11/27 | D8 | 安远 | `tests/conftest.py`、`tests/test_auth.py`、`tests/test_goods.py` | `test(质量): 补充正常流与边界值用例` |
 | 11/28 | D9 | 安远 | `tests/test_orders.py`、`tests/test_flow.py`、`tests/test_api.py`、`docs/Bug追踪.md` | `test(质量): 覆盖异常流与非法状态流转` |
