@@ -1,56 +1,14 @@
 # Author: 郝津德
-"""评价、收藏和站内消息业务。"""
+"""站内消息与收藏业务；评价业务在 D7 拆到 services/reviews.py。"""
 
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import BusinessError, Forbidden, NotFound
-from app.models import Favorite, Goods, Message, Order, Review, User
-from app.schemas import MessageIn, ReviewIn
-from app.services.orders import get_order
-from app.services.presenters import goods_data, message_data, page_result, review_data
-
-
-def create_review(db: Session, order_id: int, user: User, rating: ReviewIn) -> dict:
-    """已完成订单由买家提交一次评价；返回评价数据。"""
-    order = get_order(db, order_id, user.id)
-    if order.buyer_id != user.id:
-        raise Forbidden("只有买家可以评价")
-    if order.status != "COMPLETED":
-        raise BusinessError("交易完成后才能评价")
-    if db.scalar(select(Review.id).where(Review.order_id == order_id)):
-        raise BusinessError("该订单已评价", 409)
-    review = Review(order_id=order_id, reviewer_id=user.id, target_id=order.seller_id,
-                    rating=rating.rating, content=rating.content.strip())
-    db.add(review)
-    try:
-        db.commit()
-    except IntegrityError as exc:
-        db.rollback()
-        raise BusinessError("该订单已评价", 409) from exc
-    db.refresh(review)
-    return review_data(review, user)
-
-
-def goods_reviews(db: Session, goods_id: int, page: int, size: int) -> dict:
-    """按商品分页读取评价；返回统一列表结构。"""
-    if db.get(Goods, goods_id) is None:
-        raise NotFound("商品不存在")
-    stmt = select(Review, User).join(Order, Review.order_id == Order.id).join(
-        User, Review.reviewer_id == User.id).where(Order.goods_id == goods_id)
-    total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-    rows = db.execute(stmt.order_by(Review.created_at.desc()).offset((page - 1) * size).limit(size)).all()
-    return page_result([review_data(review, reviewer) for review, reviewer in rows], total, page, size)
-
-
-def user_rating(db: Session, user_id: int) -> dict:
-    """计算用户平均评分和评价数；返回统计对象。"""
-    if db.get(User, user_id) is None:
-        raise NotFound("用户不存在")
-    average, count = db.execute(select(func.avg(Review.rating), func.count(Review.id))
-                                .where(Review.target_id == user_id)).one()
-    return {"user_id": user_id, "average": round(float(average or 0), 1), "count": count}
+from app.core.exceptions import BusinessError, NotFound
+from app.models import Favorite, Goods, Message, User
+from app.schemas import MessageIn
+from app.services.presenters import goods_data, message_data, page_result
 
 
 def add_favorite(db: Session, user: User, goods_id: int) -> dict:
