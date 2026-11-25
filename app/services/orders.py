@@ -2,7 +2,7 @@
 """订单创建、防超卖事务、状态流转与订单展示。"""
 
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -61,11 +61,19 @@ def create_order(db: Session, goods_id: int, buyer: User) -> dict:
         goods = db.scalar(select(Goods).where(Goods.id == goods_id).with_for_update())
         if goods is None:
             raise NotFound("商品不存在")
-        if goods.status != "在售":
-            raise BusinessError("商品已被抢购", 409)
+        # 先判「是不是自己的商品」再判状态：卖家点自己已售商品时，原来会先撞上
+        # 状态检查，提示「商品已被抢购」——卖家会以为被别人买走了，实际是自己不能买。
         if goods.seller_id == buyer.id:
             raise BusinessError("不能购买自己发布的商品")
-        order_no = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f") + secrets.token_hex(4)
+        # 已售与已下架分开提示：前者是手慢了，后者是商品被卖家撤了，用户该做的事不一样。
+        if goods.status == "已售":
+            raise BusinessError("商品已被抢购", 409)
+        if goods.status != "在售":
+            raise NotFound("商品已下架")
+        # 时间统一取本地 now()：created_at 由库里 CURRENT_TIMESTAMP 生成（session 时区
+        # 是 SYSTEM，即本机时区），这里若写 UTC 的 now(timezone.utc)，同一张表里
+        # 完成时间会比创建时间早 8 小时，联调时订单详情会显示「20:08 创建、12:08 完成」。
+        order_no = datetime.now().strftime("%Y%m%d%H%M%S%f") + secrets.token_hex(4)
         order = Order(order_no=order_no, goods_id=goods.id, buyer_id=buyer.id,
                       seller_id=goods.seller_id, price=goods.price, status="PENDING")
         db.add(order)
@@ -89,7 +97,7 @@ def change_order_status(db: Session, order_id: int, user: User, target: str) -> 
         previous = order.status
         order.status = target
         if target in {"COMPLETED", "CANCELLED"}:
-            order.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            order.finished_at = datetime.now()
         if target == "CANCELLED" and previous != "COMPLETED":
             goods = db.scalar(select(Goods).where(Goods.id == order.goods_id).with_for_update())
             goods.status = "在售"
