@@ -159,7 +159,7 @@ async function orderDetailPage(){if(!requireLogin())return;initCommon("my-orders
     // 已完成订单的尾部按钮：买家没评过才给入口，评过就只留一个「已评价」标记。
     // 后端对重复评价会返回 400，但让用户点进去填完 200 字再被拒太不体面，前端先收口。
     const reviewBox=o.status!=="COMPLETED"?"":o.reviewed?'<span class="badge text-bg-success">已评价</span>':me?.id===o.buyer_id?`<a class="btn-brand" href="review.html?id=${o.id}">评价卖家</a>`:"";
-    html("订单详情",`<div class="panel"><p>订单号：${e(o.order_no)}</p><p>商品：<a href="goods-detail.html?id=${o.goods_id}">${e(o.goods_title)}</a></p><p>金额：<b class="price">${formatPrice(o.price)}</b></p><p>状态：${statusTag(o.status)}</p><p>买家：${e(o.buyer_name)} · 卖家：${e(o.seller_name)}</p><p>创建时间：${e(o.created_at)}</p><p>完成时间：${o.finished_at?e(o.finished_at):"—"}</p><div class="d-flex gap-2 align-items-center">${actionButtons(o)}${reviewBox}</div></div>`);
+    html("订单详情",`<div class="panel"><p>订单号：${e(o.order_no)}</p><p>商品：<a href="goods-detail.html?id=${o.goods_id}">${e(o.goods_title)}</a></p><p>金额：<b class="price">${formatPrice(o.price)}</b></p><p>状态：${statusTag(o.status)}</p><p>买家：${e(o.buyer_name)} · 卖家：${e(o.seller_name)}</p><p>创建时间：${e(formatTime(o.created_at))}</p><p>完成时间：${o.finished_at?e(formatTime(o.finished_at)):"—"}</p><div class="d-flex gap-2 align-items-center">${actionButtons(o)}${reviewBox}</div></div>`);
     document.querySelectorAll(".action").forEach(b=>b.onclick=()=>doAction(b,load));}await load();}
 
 async function favoritesPage(){if(!requireLogin())return;initCommon("");
@@ -195,7 +195,7 @@ async function messagesPage(){if(!requireLogin())return;initCommon("messages");c
     const data=await api.get(`/messages?peer_id=${peer}&size=100`),rows=data.items.slice().reverse();
     // 接口按时间倒序只取最近一页，条数被截断时明确告知，避免用户以为历史消息丢了。
     const hint=data.total>rows.length?`<div class="empty small">仅显示最近 ${rows.length} 条，共 ${data.total} 条</div>`:"";
-    document.getElementById("conversation").innerHTML=hint+(rows.length?rows.map(m=>`<div class="message ${m.sender_id===me.id?'mine':''}">${e(m.content)}<small>${e(m.created_at)}</small></div>`).join(""):'<div class="empty">还没有消息</div>');
+    document.getElementById("conversation").innerHTML=hint+(rows.length?rows.map(m=>`<div class="message ${m.sender_id===me.id?'mine':''}">${e(m.content)}<small title="${e(formatTime(m.created_at))}">${e(timeAgo(m.created_at))}</small></div>`).join(""):'<div class="empty">还没有消息</div>');
     await api.put("/messages/read",{peer_id:peer});}
   document.querySelectorAll(".peer").forEach(b=>b.onclick=()=>{peer=Number(b.dataset.id);history.replaceState(null,"",peerUrl(peer));document.querySelectorAll(".peer").forEach(x=>x.classList.toggle("active",x===b));load();});
   document.getElementById("message-form").onsubmit=async ev=>{ev.preventDefault();if(!peer){toast("请先选择联系人","error");return;}await api.post("/messages",{receiver_id:peer,goods_id:goodsId,content:value("content")});document.getElementById("content").value="";load();};await load();}

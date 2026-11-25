@@ -55,7 +55,7 @@ function renderHeader(activeKey) {
 
   const right = user
     ? `<a href="favorites.html" title="我的收藏">收藏</a>
-       <a href="messages.html" class="badge-dot" title="消息">消息</a>
+       <a href="messages.html" id="nav-msg" title="消息">消息</a>
        <a href="profile.html" class="d-flex align-items-center gap-2">
          <img class="avatar-mini" src="${escapeHtml(user.avatar || "")}" alt="">
          <span>${escapeHtml(user.nickname || user.username)}</span>
@@ -84,6 +84,29 @@ function renderHeader(activeKey) {
         location.href = "goods-list.html?keyword=" + encodeURIComponent(box.value.trim());
       }
     });
+  }
+
+  // 已登录才问未读数：避免匿名访问首页时请求 401 被重定向到登录页。
+  if (user) refreshUnreadBadge();
+}
+
+/**
+ * 把导航「消息」的未读角标刷成真实数量。
+ *
+ * 原来这里写死 class="badge-dot"，红点永远亮着，用户第一天就学会忽略它；
+ * 而后端 /api/messages/unread-count 一直没被调用（接口文档里列着却是死接口）。
+ * 现在 0 条不显示红点，有未读才显示数字，角标才有信息量。
+ */
+async function refreshUnreadBadge() {
+  const link = document.getElementById("nav-msg");
+  if (!link || !getToken()) return;
+  try {
+    const { count } = await api.get("/messages/unread-count");
+    const unread = Number(count) || 0;
+    link.title = unread > 0 ? `消息（${unread} 条未读）` : "消息";
+    link.innerHTML = unread > 0 ? `消息<span class="badge-count">${unread > 99 ? "99+" : unread}</span>` : "消息";
+  } catch (err) {
+    // 角标只是锦上添花，接口失败就保持无角标，不该把整页拖进错误处理
   }
 }
 
@@ -146,9 +169,29 @@ function timeAgo(isoText) {
   return new Date(isoText).toLocaleDateString("zh-CN");
 }
 
+/**
+ * 绝对时间：2026-11-25T12:02:27.003782 -> 2026-11-25 12:02
+ *
+ * 后端直接返回 ISO 字符串，前端原来用 e(o.created_at) 原样打到页面上，
+ * 用户看到的是「2026-11-25T12:02:27.003782」这种带 T 和微秒的串。
+ * 订单这类需要精确时间的场景用这个，聊天用上面的相对时间。
+ */
+function formatTime(isoText) {
+  if (!isoText) return "";
+  const date = new Date(isoText);
+  if (Number.isNaN(date.getTime())) return String(isoText);
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) +
+    " " + pad(date.getHours()) + ":" + pad(date.getMinutes())
+  );
+}
+
 /** 订单状态 -> 标签样式与文案 */
 const ORDER_STATUS = {
-  PENDING: { text: "待买家确认", cls: "status-pending" },
+  // PENDING 是买家下单后等卖家「确认出售」，文案必须与按钮动作一致；
+  // 这里原来写「待买家确认」，与 order_state.py 里卖家那一跳正好相反。
+  PENDING: { text: "待卖家确认", cls: "status-pending" },
   PAID_PENDING: { text: "待付款", cls: "status-paid" },
   COMPLETED: { text: "已完成", cls: "status-done" },
   CANCELLED: { text: "已取消", cls: "status-cancel" },
