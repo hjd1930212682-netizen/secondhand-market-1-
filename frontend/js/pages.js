@@ -68,14 +68,19 @@ async function goodsDetailPage() {
   const photos=(g.images||"").split(",").filter(Boolean);
   const HOLDER="data:image/svg+xml;charset=utf-8,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><rect width="600" height="600" fill="#f0f1f2"/><text x="300" y="310" font-size="26" fill="#b4b2a9" text-anchor="middle">暂无图片</text></svg>');
   APP.innerHTML=`<div class="detail-layout"><div class="panel"><img id="main-photo" class="detail-photo" src="${photos[0]||HOLDER}" alt="${e(g.title)}">${photos.length>1?`<div class="d-flex align-items-center gap-2 mt-2"><div id="thumbs" class="d-flex gap-2 flex-grow-1 overflow-auto">${photos.map((src,i)=>`<img class="thumb-item border border-2 ${i===0?"border-primary":"border-transparent"}" src="${e(src)}" alt="商品图片 ${i+1}">`).join("")}</div><span id="photo-index" class="small text-muted">1 / ${photos.length}</span></div>`:""}</div>
-    <div class="panel"><h1 class="page-title">${e(g.title)}</h1><div class="price price-large">${formatPrice(g.price)}</div><p class="text-muted">${e(g.category_name)} · ${g.view_count} 次浏览 · ${e(g.status)}</p><p class="description">${e(g.description)}</p><p>卖家：${e(g.seller_name)} · 信用分 ${g.seller_credit}</p><div class="d-flex flex-wrap gap-2"><button id="fav" class="btn-ghost">收藏</button><button id="chat" class="btn-ghost">联系卖家</button><button id="buy" class="btn-brand" ${g.status!=="在售"||me?.id===g.seller_id?"disabled":""}>${g.status!=="在售"?"暂不可购买":"立即购买"}</button></div></div></div>
+    <div class="panel"><h1 class="page-title">${e(g.title)}</h1><div class="price price-large">${formatPrice(g.price)}</div><p class="text-muted">${e(g.category_name)} · ${g.view_count} 次浏览 · ${e(g.status)}</p><p class="description">${e(g.description)}</p><p>卖家：${e(g.seller_name)} · 信用分 ${g.seller_credit}<span id="seller-rate"></span></p><div class="d-flex flex-wrap gap-2"><button id="fav" class="btn-ghost">收藏</button><button id="chat" class="btn-ghost" ${me?.id===g.seller_id?"disabled":""}>${me?.id===g.seller_id?"自己的商品":"联系卖家"}</button><button id="buy" class="btn-brand" ${g.status!=="在售"||me?.id===g.seller_id?"disabled":""}>${g.status!=="在售"?"暂不可购买":"立即购买"}</button></div></div></div>
     <section class="panel mt-4"><h2 class="page-title">商品评价</h2><div id="reviews"></div></section>`;
   // 点缩略图换主图并更新「第几张 / 共几张」，选中态借 Bootstrap 边框工具类，不新增 CSS。
   document.querySelectorAll(".thumb-item").forEach((el,i)=>el.onclick=()=>{document.getElementById("main-photo").src=photos[i];document.getElementById("photo-index").textContent=(i+1)+" / "+photos.length;document.querySelectorAll(".thumb-item").forEach((t,j)=>{t.classList.toggle("border-primary",i===j);t.classList.toggle("border-transparent",i!==j);});});
   document.getElementById("fav").onclick=async()=>{if(!requireLogin())return;await api.post("/favorites",{goods_id:id});toast("收藏成功","success");};
   document.getElementById("chat").onclick=()=>{if(requireLogin())goto(`messages.html?to=${g.seller_id}&goods_id=${id}`);};
   document.getElementById("buy").onclick=async()=>{if(!requireLogin())return;const o=await api.post("/orders",{goods_id:id});goto("order-detail.html?id="+o.id);};
-  const reviews=(await api.get(`/goods/${id}/reviews`)).items;
+  const [reviewsData, rating] = await Promise.all([api.get(`/goods/${id}/reviews`), api.get(`/users/${g.seller_id}/rating`).catch(() => null)]);
+  // 评价统计接口一直存在却没被任何页面调用，详情页只显示写死在种子数据里的「信用分 100」，
+  // 买家看不到这个卖家到底被评过几分。这里把平均星级补上；没有评价就明说，不显示 0.0 分。
+  const rateText = document.getElementById("seller-rate");
+  if (rateText && rating) rateText.textContent = rating.count ? ` · 评分 ${rating.average}（${rating.count} 条）` : " · 暂无交易评价";
+  const reviews = reviewsData.items;
   document.getElementById("reviews").innerHTML=reviews.length?reviews.map(r=>`<div class="border-bottom py-2"><b>${e(r.reviewer_name)}</b> <span class="price">${"★".repeat(r.rating)}</span><p>${e(r.content)}</p></div>`).join(""):'<div class="empty">暂无评价</div>';
 }
 

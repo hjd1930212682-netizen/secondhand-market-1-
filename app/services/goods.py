@@ -52,7 +52,10 @@ def update_goods(db: Session, goods_id: int, user: User, payload: GoodsIn) -> di
         setattr(goods, key, value)
     db.commit()
     db.refresh(goods)
-    return goods_data(goods)
+    # 发布接口返回的是带 seller_name / category_name 的完整出参，编辑接口原来只返回
+    # goods_data(goods)，少了这几个字段：前端编辑完若直接用返回值刷新页面，
+    # 卖家名与分类名会变成 undefined。两个接口返回同一形状，前端才能一套代码复用。
+    return goods_data(goods, user, db.get(Category, goods.category_id))
 
 
 def change_status(db: Session, goods_id: int, user: User, status: str) -> dict:
@@ -64,7 +67,8 @@ def change_status(db: Session, goods_id: int, user: User, status: str) -> dict:
         raise BusinessError("商品状态不合法")
     goods.status = status
     db.commit()
-    return goods_data(goods)
+    # 与 update_goods 同理：上下架后前端要就地刷新卡片，不能少卖家与分类字段。
+    return goods_data(goods, user, db.get(Category, goods.category_id))
 
 
 def delete_goods(db: Session, goods_id: int, user: User) -> dict:
