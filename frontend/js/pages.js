@@ -47,10 +47,15 @@ async function goodsListPage() {
   document.getElementById("category").value = state.category_id;
   document.getElementById("sort").value = state.sort;
   async function load() {
+    // 只把有值的条件拼进查询串。原来这段拼好的 p 只用来改地址栏，真正的请求却传了
+    // new URLSearchParams({...state})——首次打开发/逛一逛时 category_id 是空串，
+    // 请求变成 category_id=，后端按整数解析失败返回 400「category_id 参数格式或取值不正确」，
+    // 整个列表页就只剩一个错误块。地址栏不带 size，请求要带，所以末尾单独补上。
     const p = new URLSearchParams();
     Object.entries(state).forEach(([k,v]) => {if (k!=="size" && v) p.set(k,v);});
     history.replaceState(null,"","?"+p.toString());
-    const data = await api.get("/goods?"+new URLSearchParams({...state}).toString());
+    p.set("size", state.size);
+    const data = await api.get("/goods?"+p.toString());
     document.getElementById("count").textContent = `共 ${data.total} 件`;
     document.getElementById("items").innerHTML = renderGoods(data.items);
     renderPager(document.getElementById("pager"),state.page,Math.max(1,Math.ceil(data.total/state.size)),p=>{state.page=p;load();});
