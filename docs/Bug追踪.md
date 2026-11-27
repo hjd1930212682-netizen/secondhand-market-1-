@@ -10,5 +10,6 @@
 | BUG-06 | D8 补边界用例 | 昵称传三个空格能注册成功并存成空昵称：`min_length=1` 校验原字符串，长度 3 过闸，服务层再 `strip()` 才变空 | 在 `schemas` 增加 `strip_text`，`RegisterIn.nickname` 改用 `mode="before"` 校验器，先归一化再走长度约束 | `test_register_blank_nickname_by_spaces` 由 201 变 400 |
 | BUG-07 | D8 补边界用例 | `PUT /api/users/me` 同样能把昵称改成一片空白，个人主页显示无名 | `ProfileIn.nickname` 复用同一校验器；顺带给 `phone` 去掉首尾空格 | `test_update_profile_blank_nickname_rejected` 由 200 变 400 |
 | BUG-08 | D8 补边界用例 | 反向问题：1 字昵称、160 字标题只要带首尾空格就被判超长，提示「长度不合法」但用户数不出哪里超 | 校验顺序由「先长度后 strip」改为「先 strip 后长度」，`GoodsIn.title` 与两个昵称字段统一 | `test_title_boundary_length`、`test_register_nickname_near_max_length` 通过（160/80 可用、161/81 被拒） |
+| BUG-09 | D9 覆盖盘点 | `/api/upload` 是全项目唯一零用例覆盖的写接口，却同时承担接收任意客户端文件、决定落盘文件名、回传本地路径三件危险动作；即使把魔术字节校验整段删掉，原有 96 项用例也不会变红 | 新增 `tests/test_upload.py` 14 项：未登录 401、三种白名单类型落盘与 UUID 命名、四类非法类型 400、空文件与超 5 MB 400、三种 Content-Type 伪造被魔术字节拦下、客户端文件名带 `../` 被重写 | 把 `if not signatures[...]` 临时改为 `if False` 后重跑，三处伪装用例立即 FAILED；恢复后 14 项全绿，全量 110 passed |
 
 记录只包含实际发现和处理的问题。MySQL 并发用例已在本机 MySQL 8.0.46 的 `secondhand_market_test` 库跑通：五个并发请求仅 1 单成功，其余 4 单返回 409「商品已被抢购」。
