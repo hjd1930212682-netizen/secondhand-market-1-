@@ -265,10 +265,17 @@ def build(with_zip: bool = False) -> Path:
     report = PROJECT_ROOT / "docs" / "实验报告.docx"
     if report.exists():
         _copy(report, DELIVER_ROOT / "03_实验报告" / "实验报告.docx")
+    # PDF 与 docx 同源，供没有 Word 或字体缺失的环境直接查看排版
+    report_pdf = PROJECT_ROOT / "docs" / "实验报告.pdf"
+    if report_pdf.exists():
+        _copy(report_pdf, DELIVER_ROOT / "03_实验报告" / "实验报告.pdf")
     (DELIVER_ROOT / "03_实验报告" / "待办.txt").write_text(
-        "提交前请确认：\n1. 报告 6 章齐全，封面信息已填写\n"
-        "2. 文档中的接口数量、状态转移条数与最终代码一致\n"
-        "3. 所有截图来自最终版本\n",
+        "提交前请确认：\n"
+        "1. 报告 6 章齐全，封面四人姓名与学号已填写（郝津德 2518040124、王昱皓 2518040121、"
+        "杨云凇 2518040214、安远 2518040216）\n"
+        "2. 文档中的接口数量（30 个）、状态转移条数（6 条）、测试数量（110 项）与最终代码一致\n"
+        "3. 实验报告.pdf 与 docx 同源，若改稿需重跑 scripts/make_report.py 后再导出\n"
+        "4. 所有截图来自最终版本\n",
         encoding="utf-8",
     )
 
