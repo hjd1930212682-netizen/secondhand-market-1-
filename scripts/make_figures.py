@@ -547,14 +547,24 @@ def build_usecase() -> Path:
 AUTHOR_COLOR = {"郝津德": "#7fb2f0", "王昱皓": "#6fd6c4", "杨云凇": "#f0b46a", "安远": "#c8a2e8"}
 
 
+# 报告与图统一按这个提交统计，取值时仓库停在此处：报告自身的提交不计入，
+# 否则每改一次稿就要改一次总数，等于统计对象包含统计结果，永远对不齐。
+BASE_REV = "c1f2190"
+
+
 def build_gitlog() -> Path:
-    """第七张图：按 git log 真实输出渲染最近 18 条提交。"""
+    """第七张图：按 git log 真实输出渲染最近 18 条提交（截至 BASE_REV）。"""
+    rev = BASE_REV
+    probe = subprocess.run(["git", "rev-parse", "--verify", rev], cwd=ROOT,
+                           capture_output=True, text=True)
+    if probe.returncode != 0:
+        rev = "HEAD"
     fmt = "%h%x09%ad%x09%an%x09%s"
     raw = subprocess.run(
-        ["git", "log", f"--pretty=format:{fmt}", "--date=format:%m-%d", "-18"],
+        ["git", "log", rev, f"--pretty=format:{fmt}", "--date=format:%m-%d", "-18"],
         cwd=ROOT, capture_output=True, text=True, check=True,
     ).stdout.strip().splitlines()
-    total = subprocess.run(["git", "rev-list", "--count", "HEAD"], cwd=ROOT,
+    total = subprocess.run(["git", "rev-list", "--count", rev], cwd=ROOT,
                            capture_output=True, text=True, check=True).stdout.strip()
 
     c = Canvas(453, 300, bg="#eef2f8")
