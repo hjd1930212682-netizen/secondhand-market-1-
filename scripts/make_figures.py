@@ -154,7 +154,7 @@ def rel(c: Canvas, pts, label: str, at: tuple[float, float] | None = None) -> No
 
 def build_er() -> Path:
     """第一张图：七张表的 ER 图。字段后的 → 表示外键。"""
-    c = Canvas(453, 500)
+    c = Canvas(453, 472)
 
     entity(c, 6, 8, 134, "users 用户", USER_C, [
         ("id", "int", "PK"), ("username", "varchar(50)", "UK"),
@@ -208,10 +208,10 @@ def build_er() -> Path:
     rel(c, [(317, 250), (317, 264)], "一单一评 1:1", (352, 257))
     rel(c, [(140, 104), (236, 104), (236, 298), (250, 298)], "评价 1:N", (236, 344))
 
-    c.text((6, 482), "说明：字段后的 → 表示外键指向的表；PK 主键、FK 外键、UK 唯一键；"
+    c.text((6, 455), "说明：字段后的 → 表示外键指向的表；PK 主键、FK 外键、UK 唯一键；"
                      "14 条外键全部在 MySQL 中建成真实约束。",
            size=6.4, fill=MUTED, anchor="ls")
-    c.text((6, 493), "为免连线交叉，messages 指向 users 与 goods 的三条外键只以字段标注表示。",
+    c.text((6, 466), "为免连线交叉，messages 指向 users 与 goods 的三条外键只以字段标注表示。",
            size=6.4, fill=MUTED, anchor="ls")
     return c.save("fig1_er.png")
 

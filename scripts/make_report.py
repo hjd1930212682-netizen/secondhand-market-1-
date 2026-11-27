@@ -554,11 +554,11 @@ def build_chapter3(doc) -> None:
          "它们不包含业务规则，只负责渲染与收集输入；业务层是 FastAPI 的路由与服务，"
          "路由只做参数校验和依赖注入，业务判断集中在 service；"
          "数据层是 SQLAlchemy 的模型与 MySQL 的七张表，只描述结构与约束。")
+    figure(doc, "fig2_architecture.png", "图 3-1　系统分层架构与一次下单请求的调用链")
     para(doc,
-         "图 3-1 右侧给出一次「立即购买」请求的十步调用链，可以看清请求在每一层被处理成什么："
+         "图 3-1 下半给出一次「立即购买」请求的十步调用链，可以看清请求在每一层被处理成什么："
          "浏览器携带令牌发起请求，路由解析当前用户，服务在事务中锁行、校验、建单、改状态，"
          "最后把订单与可用操作一起返回，前端据此渲染按钮。这条链路是理解整个系统的骨架。")
-    figure(doc, "fig2_architecture.png", "图 3-1　系统分层架构与一次下单请求的调用链")
     para(doc,
          "分层的实际收益在改动时体现。以「已售商品不允许编辑」为例，"
          "这条规则只写在商品服务的两个函数里，路由与页面都不重复判断；"
@@ -571,19 +571,19 @@ def build_chapter3(doc) -> None:
          "避免后续有人调整 import 顺序时再次踩坑。")
 
     heading(doc, "3.2　功能模块图", 2)
+    figure(doc, "fig3_modules.png", "图 3-2　功能模块划分与责任人")
     para(doc,
          "模块按可分配粒度拆分，每个模块都对应到明确的文件，且标注了负责人，"
          "与表 1-1 的分工一致。这样划分的好处是模块边界与文件边界重合，"
          "合代码时冲突面小；坏处是「评价」这类横跨订单与用户的模块需要复用订单服务的校验，"
          "为此把状态判断抽到 order_state.py 供多方调用，避免复制条件判断。")
-    figure(doc, "fig3_modules.png", "图 3-2　功能模块划分与责任人")
 
     heading(doc, "3.3　数据库设计", 2)
+    figure(doc, "fig1_er.png", "图 3-3　数据库实体联系图（PK 主键、FK 外键、UK 唯一键）")
     para(doc,
          "数据库共七张表：users、categories、goods、orders、reviews、favorites、messages。"
          "图 3-3 标出主键、外键、唯一键与联系基数，14 条外键全部在 MySQL 中建为真实约束——"
          "只在代码里拼字段不会在写入时报错，等查出孤儿数据时代价更高。")
-    figure(doc, "fig1_er.png", "图 3-3　数据库实体联系图（PK 主键、FK 外键、UK 唯一键）")
     table(doc,
           ["表名", "作用", "关键字段与约束"],
           [["users", "账号与公开资料", "username UK；password_hash 存 bcrypt；avatar_url、rating 汇总"],
