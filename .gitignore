@@ -8,3 +8,6 @@ __pycache__/
 frontend/uploads/*
 !frontend/uploads/.gitkeep
 
+
+# 报告排版核对时由 PDF 逐页导出的位图，可随时重生成，不入库
+docs/_preview/

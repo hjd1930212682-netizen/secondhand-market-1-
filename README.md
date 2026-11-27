@@ -62,7 +62,7 @@ sc.exe start MySQL80
 - `app/models/`：七张表；`app/services/`：业务规则；`app/routers/`：HTTP 参数和服务调用；`app/core/`：鉴权、异常和日志。
 - `frontend/pages/`：规格列出的 14 个页面；`frontend/js/api.js` 负责所有请求，`pages.js` 负责页面交互。
 - `sql/init.sql`：MySQL 8.0 建库和建表；`seed.py`：种子分类与可选演示账号。
-- `docs/`：接口文档、四张设计图（`docs/figures/`）、测试记录和报告草稿。设计图由 `python scripts/make_figures.py` 生成，改代码后重跑即可同步。
+- `docs/`：接口文档、七张设计图（`docs/figures/`）、测试记录和报告。七张图是 ER、架构、模块、状态机，加上流程图、用例图和 Git 提交历史；全部由 `python scripts/make_figures.py` 生成，改代码后重跑即可同步，`fig7` 会按当前 `git log` 重新取前 18 条。
 
 订单状态以 `app/services/order_state.py` 的转移表为唯一来源。所有前端订单按钮由接口的 `available_actions` 字段生成。商品删除是状态改为“已下架”，历史订单仍可引用商品。
 

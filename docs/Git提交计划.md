@@ -28,9 +28,9 @@
 | 11/25 | D6 | 王昱皓 | `frontend/pages/404.html`、`frontend/css/style.css`、`frontend/js/{common,pages}.js`（统一样式、页脚与错误提示） | `style(前端): 统一十四页样式与响应式断点`（已于 11/24 提前完成；`404.html` 原为郝津德占位桩，正式版由王昱皓改写，作者行随提交人） |
 | 11/26 | D7 | 全员 | 联调修复产生的改动，按修改人分别提交 | `fix(联调): 修正图片回显与状态按钮刷新`（已于 11/25 完成，5 条提交：王昱皓 `2303058` 未读角标/时间格式/状态文案；杨云凇 `e62fdac` 出参补齐与卖家评分、`c30c9d4` 列表页空 `category_id`；郝津德 `caeb198` 订单时间与校验顺序、`132f962` social 去重；安远 `13f71c3` 空白评价与拆 `services/reviews.py`） |
 | 11/27 | D8 | 安远 | `tests/conftest.py`、`tests/test_auth.py`、`tests/test_goods.py` | `test(质量): 补充正常流与边界值用例`（已于 11/27 完成，+28 项共 96 项；随修 `schemas` 空白校验 `73b2509`，作者行与提交人一致归郝津德） |
-| 11/28 | D9 | 安远 | `tests/test_orders.py`、`tests/test_flow.py`、`tests/test_api.py`、`docs/Bug追踪.md` | `test(质量): 覆盖异常流与非法状态流转` |
-| 11/29 | D10 | 全员 | `docs/实验报告草稿.md`、`docs/实验报告.docx`（按章分别提交 md） | `docs(报告): 完成第二至第五章` |
-| 11/30 | D11 | 郝津德 | `docs/系统设计.md`、`docs/分工说明.md`、`scripts/package.py` | `docs(交付): 补齐图表与交付打包脚本` |
+| 11/28 | D9 | 安远 | `tests/test_orders.py`、`tests/test_flow.py`、`tests/test_api.py`、`docs/Bug追踪.md` | `test(质量): 覆盖异常流与非法状态流转`（已于 11/27 晚提前完成，+14 项共 110 项；计划外新增 `tests/test_upload.py`，理由见进度日志 D9） |
+| 11/29 | D10 | 全员 | `docs/实验报告草稿.md`、`docs/实验报告.docx`（按章分别提交 md） | `docs(报告): 完成第二至第五章`（已于 11/27 提前完成，改用 `scripts/make_report.py` 脚本生成，正文、docx 与 PDF 同源） |
+| 11/30 | D11 | 郝津德 | `docs/系统设计.md`、`docs/分工说明.md`、`scripts/package.py` | `docs(交付): 补齐图表与交付打包脚本`（已于 11/27 晚提前完成；实际范围扩到七张图与 `scripts/build_pdf.ps1`，图表脚本按作者行归安远） |
 
 ## 三、每日自检
 
