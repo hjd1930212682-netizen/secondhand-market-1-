@@ -501,7 +501,7 @@ def actor(c: Canvas, x: float, y: float, label: str, color: str = NAVY) -> None:
 
 def build_usecase() -> Path:
     """第六张图：用例图，游客、买家、卖家三个角色与用例的对应关系。"""
-    c = Canvas(453, 292)
+    c = Canvas(453, 304)
 
     c.rect((52, 40, 400, 274), fill="#fbfcfe", outline="#b9c8da", width=0.9, radius=5)
     c.text((58, 48), "校园二手交易平台", size=7.0, bold=True, fill=NAVY, anchor="lm")
@@ -537,7 +537,7 @@ def build_usecase() -> Path:
     c.text((236, 19), "游客", size=6.6, bold=True, fill=NAVY, anchor="lm")
     c.arrow([(226, 30), (226, rows[2] - 1)], fill="#cdd8e6", width=0.7, head=3.2)
 
-    c.text((6, 294), "说明：三个角色不是三套账号，同一账号按订单上下文判定身份；"
+    c.text((6, 296), "说明：三个角色不是三套账号，同一账号按订单上下文判定身份；"
                      "未登录只能浏览与搜索。",
            size=6.4, fill=MUTED, anchor="ls")
     return c.save("fig6_usecase.png")

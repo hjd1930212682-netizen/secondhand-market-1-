@@ -1,26 +1,67 @@
 # Author: Hao Jinde
-# Turn the .docx produced by scripts/make_report.py into the final Word file + PDF:
-#   1) update the TOC field (python-docx can only write a placeholder; page numbers need Word layout)
-#   2) TOC 1 / TOC 2 styles only exist after the first field update, so compress them afterwards
-#   3) save back to .docx (keeps the resolved TOC), then export a PDF next to it
+# Turn the .docx produced by scripts/make_report.py into the final Word file + PDF.
+#
 # Usage: powershell -ExecutionPolicy Bypass -File scripts/build_pdf.ps1 [-DocsDir <path>]
 # Kept ASCII-only on purpose: PS 5.1 reads a BOM-less script as ANSI, and Chinese
 # literals in a .ps1 file get mangled on some machines. The document name is found
 # by wildcard instead of being written out here.
 #
-# Two things learned the hard way, both encoded below:
+# Five things learned the hard way, all encoded below:
+#
 #   * Word's COM Documents.Open() does not fail on a path with Chinese characters --
 #     it just never returns (measured > 4 min, no error). So the work happens in an
 #     ASCII temp directory and the results are copied back at the end.
-#   * ExportAsFixedFormat() crashes the Word instance on this machine once the
-#     document carries seven 2x-resolution figures; SaveAs2(..., 17) exports the
-#     same PDF in ~13 s. ExportAsFixedFormat stays as a fallback only.
-#   * Document.Close() / Application.Quit() block forever after the export (some
-#     invisible dialog). The script therefore kills only the WINWORD processes it
-#     started itself, then copies the two output files back to docs/.
+#
+#   * Two phases, not one. Doing TablesOfContents.Update() + Save() + SaveAs2(pdf)
+#     in a single Word session hangs this machine at SaveAs2: no error, no PDF, the
+#     Word process just spins. Splitting into "open + update + save" and then
+#     "open + export" makes each phase finish in 12-15 s. Phase 1 writes the
+#     resolved TOC back into the .docx, so phase 2 only has to export.
+#
+#   * Do NOT set $word.Options.UpdateLinksAtOpen = $false. Every hang reproduced so
+#     far had that line set, every clean run did not. It looks harmless; it is not.
+#
+#   * ExportAsFixedFormat() crashes the Word instance once the document carries
+#     seven 2x-resolution figures; SaveAs2(..., 17) exports the same PDF in ~13 s.
+#     ExportAsFixedFormat stays as a fallback only. Document.Close()/Quit() block
+#     forever after the export (some invisible dialog), so each phase kills only the
+#     WINWORD processes it started itself and then copies its output back to docs/.
+#
+#   * Phase 2 is still flaky: on the same unchanged document SaveAs2 sometimes
+#     returns in ~13 s and sometimes never returns (Word sits at 100% CPU, no
+#     error). A blocking COM call cannot be timed out from inside the script, so
+#     there is no retry here -- if "pdf" is not printed within a minute, kill
+#     WINWORD in Task Manager and run the script again. Nothing is corrupted by
+#     the retry: phase 1 only re-updates the TOC and phase 2 overwrites the PDF.
 param([string]$DocsDir)
 
 $ErrorActionPreference = 'Stop'
+
+function Get-WinwordIds {
+    return @(Get-Process -Name WINWORD -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
+}
+
+function Stop-NewWinword {
+    param([int[]]$Keep)
+    Get-Process -Name WINWORD -ErrorAction SilentlyContinue |
+        Where-Object { $Keep -notcontains $_.Id } |
+        Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    [GC]::Collect()
+}
+
+function Copy-Back {
+    param([string]$From, [string]$To)
+    for ($i = 0; $i -lt 5; $i++) {
+        try {
+            Copy-Item -LiteralPath $From -Destination $To -Force
+            return
+        } catch {
+            if ($i -eq 4) { throw }
+            Start-Sleep -Seconds 2
+        }
+    }
+}
 
 if (-not $DocsDir) {
     $here = $PSScriptRoot
@@ -42,25 +83,22 @@ $work = Join-Path $env:TEMP ('secondhand-report-' + (Get-Date -Format 'yyyyMMdd-
 New-Item -ItemType Directory -Path $work | Out-Null
 $tmpDocx = Join-Path $work 'report.docx'
 $tmpPdf = Join-Path $work 'report.pdf'
-Copy-Item -LiteralPath $src.FullName -Destination $tmpDocx -Force
 
-$word = $null
-$doc = $null
-$startedAt = Get-Date
+# ---- phase 1: resolve the TOC field and save the .docx ----------------------
+# python-docx can only write a placeholder; page numbers need Word's layout.
+# TOC 1 / TOC 2 styles only exist after the first field update, so they are
+# compressed afterwards. Single line spacing keeps the 28-page report at 28
+# pages instead of spilling the TOC onto a second page.
+Copy-Item -LiteralPath $src.FullName -Destination $tmpDocx -Force
+$keep = Get-WinwordIds
 try {
     $word = New-Object -ComObject Word.Application
     $word.Visible = $false
     $word.DisplayAlerts = 0
-    # do not ask about updating links / templates while running headless
-    $word.Options.UpdateLinksAtOpen = $false
 
     $doc = $word.Documents.Open($tmpDocx, $false, $false, $false)
 
     foreach ($toc in $doc.TablesOfContents) { $toc.Update() }
-    $doc.Repaginate()
-
-    # single line spacing for TOC entries, otherwise a 29-page report grows to 30
-    # and the TOC starts spilling onto a second page
     foreach ($name in @('TOC 1', 'TOC 2')) {
         try {
             $style = $doc.Styles.Item($name)
@@ -70,43 +108,34 @@ try {
         } catch { }
     }
     $doc.Repaginate()
-
-    $pages = $doc.ComputeStatistics(2)          # 2 = wdStatisticPages
-    $doc.Save()                                  # write the resolved TOC back into the .docx
-
-    try {
-        $doc.SaveAs2($tmpPdf, 17)                # 17 = wdFormatPDF, the fast path here
-    } catch {
-        $doc.ExportAsFixedFormat($tmpPdf, 17)    # fallback: slower, occasionally crashes Word
-    }
-
+    $pages = $doc.ComputeStatistics(2)      # 2 = wdStatisticPages
+    $doc.Save()
     Write-Output ("docx : " + $src.FullName)
-    Write-Output ("pdf  : " + $pdfPath)
     Write-Output ("pages: " + $pages)
 }
 finally {
-    # Close()/Quit() hang here; kill only the instance this run created so a Word
-    # window the user has open with their own document is left alone. The process
-    # is ended without closing the document, which is safe because both outputs
-    # were already written to disk by then.
-    Get-Process -Name WINWORD -ErrorAction SilentlyContinue |
-        Where-Object { $_.StartTime -ge $startedAt } |
-        Stop-Process -Force
-    Start-Sleep -Seconds 2
-    [GC]::Collect()
+    Stop-NewWinword -Keep $keep
 }
+Copy-Back -From $tmpDocx -To $src.FullName
 
-# Copy back only after Word released its handles: copying while the document is still
-# open fails with "file is being used by another process". Retry briefly in case the
-# COM server needs a moment to exit.
-foreach ($pair in @(@($tmpDocx, $src.FullName), @($tmpPdf, $pdfPath))) {
-    for ($i = 0; $i -lt 5; $i++) {
-        try {
-            Copy-Item -LiteralPath $pair[0] -Destination $pair[1] -Force
-            break
-        } catch {
-            if ($i -eq 4) { throw }
-            Start-Sleep -Seconds 2
-        }
+# ---- phase 2: export the PDF from the now-resolved .docx --------------------
+# SaveAs2 is the fast path here; see the header note about ExportAsFixedFormat
+# and about this phase occasionally hanging.
+$keep = Get-WinwordIds
+try {
+    $word = New-Object -ComObject Word.Application
+    $word.Visible = $false
+    $word.DisplayAlerts = 0
+
+    $doc = $word.Documents.Open($tmpDocx, $false, $false, $false)
+    try {
+        $doc.SaveAs2($tmpPdf, 17)            # 17 = wdFormatPDF
+    } catch {
+        $doc.ExportAsFixedFormat($tmpPdf, 17)
     }
+    Write-Output ("pdf  : " + $pdfPath)
 }
+finally {
+    Stop-NewWinword -Keep $keep
+}
+Copy-Back -From $tmpPdf -To $pdfPath

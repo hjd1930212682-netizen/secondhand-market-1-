@@ -195,6 +195,9 @@ def figure(doc, filename: str, cap: str, width: float = 16.0) -> None:
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_before = Pt(8)
     p.paragraph_format.space_after = Pt(2)
+    # 图与图题必须同页：图片段落设「与下段同页」，
+    # 否则图正好排到页底时，图题会单独掉到下一页，读者先看到一行图号再翻页找图。
+    p.paragraph_format.keep_with_next = True
     p.add_run().add_picture(str(path), width=Cm(width))
     caption(doc, cap)
 
@@ -478,12 +481,14 @@ def build_chapter2(doc) -> None:
          "改回在售会造成同一件物品被卖两次。")
 
     heading(doc, "2.2　用例图", 2)
+    # 先图后文：图放在导语之前，正好接在 2.1 末尾的空白处。
+    # 若把三行导语放前面，图就顶到页底，只能整块挪到下一页，上一页底部空出约 11 cm。
+    figure(doc, "fig6_usecase.png", "图 2-2　系统用例图（三个角色与 12 个用例）")
     para(doc,
          "图 2-2 把角色与用例的对应关系画清楚。三个角色是游客、买家与卖家，"
          "其中游客只能浏览与搜索，注册登录后按订单上下文切换买家与卖家身份。"
          "这样画而不是画成三个互斥角色，是因为实现上只有一个 users 表，"
          "没有 role 字段——角色是推导出来的，不是存储的。")
-    figure(doc, "fig6_usecase.png", "图 2-2　系统用例图（三个角色与 12 个用例）")
     table(doc,
           ["角色", "可用用例", "约束"],
           [["游客（未登录）", "浏览商品列表、搜索与排序、查看商品详情、查看卖家主页与评分",
